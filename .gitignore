@@ -1,0 +1,21 @@
+# Ignore sensitive files
+*.log
+*.pid
+/tmp/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore profile data (should be in user's home)
+browser-profile/
+
+# Ignore node_modules if any
+node_modules/
