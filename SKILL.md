@@ -150,7 +150,7 @@ perplexity-pro-openclaw/
 
 | Date | Test | Result |
 |------|------|--------|
-| 2025-02-20 | Unauthenticated Russian query | ✅ Success |
+| 2025-02-20 | Unauthenticated query in forain language | ✅ Success |
 | 2025-02-20 | Cloudflare bypass | ✅ Success |
 
 ## Security Considerations
