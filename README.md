@@ -126,14 +126,51 @@ Or use Finder → Cmd+K → `vnc://your-server-ip:5900`
 
 ## Usage
 
-After setup, your OpenClaw agent can search:
+### Automated Search (No Authentication Required)
+
+For basic queries, you can use Perplexity without signing in:
 
 ```bash
 # Start browser
 ~/.openclaw/workspace/start-stealth-browser.sh
+```
 
-# Search Perplexity
-openclaw browser open "https://www.perplexity.ai/search?q=latest+AI+news"
+Then use the OpenClaw browser tool with the **openclaw** profile:
+
+```
+# 1. Open Perplexity
+browser open --profile openclaw https://www.perplexity.ai
+
+# 2. Close the auth modal (if shown)
+browser click --ref <close-button-ref>
+
+# 3. Click the search textbox
+browser click --ref <textbox-ref>
+
+# 4. Type your query
+browser type --ref <textbox-ref> "your search query"
+
+# 5. Click Submit button
+browser click --ref <submit-button-ref>
+
+# 6. Wait 2-3 seconds for results
+browser wait --time 3000
+
+# 7. Capture results
+browser snapshot
+```
+
+**Key Points for Automation:**
+- Use `--profile openclaw` (not `chrome`) — Chrome profile requires manual extension attachment
+- Close auth modals immediately — don't attempt automated login flows
+- Wait after submitting — Perplexity needs 2-3 seconds to generate answers
+- If Cloudflare appears, close tab and retry with fresh session
+
+### URL-Based Search (Quick Method)
+
+For simple queries, you can also use:
+```bash
+openclaw browser open "https://www.perplexity.ai/search?q=your+query+here"
 ```
 
 ## How It Works
@@ -178,11 +215,30 @@ openclaw browser open "https://www.perplexity.ai/search?q=latest+AI+news"
 
 ## Troubleshooting
 
+### Chrome extension relay not connected
+**Error:** "Chrome extension relay is running, but no tab is connected"
+
+**Fix:** Use `--profile openclaw` instead of `--profile chrome`. The chrome profile requires manual extension attachment via the browser toolbar icon.
+
+### Auth modal blocks interaction
+**Problem:** Login/signup modal appears on page load
+
+**Fix:** Click the Close button (X) immediately. Don't attempt automated OAuth flows — they trigger anti-bot measures. For authenticated searches, use VNC to sign in once, then cookies persist.
+
+### Query doesn't submit
+**Problem:** Text entered but no response generated
+
+**Fix:** Ensure you:
+1. Click the textbox first (to focus it)
+2. Type the full query
+3. Click the Submit button (not just pressing Enter)
+4. Wait 2-3 seconds for processing
+
 ### Chrome shows "HeadlessChrome"
 **Fix:** Ensure Xvfb is running before Chrome, not `--headless` flag
 
 ### Cloudflare still blocking
-**Fix:** Update Chrome, verify all anti-bot flags present
+**Fix:** Update Chrome, verify all anti-bot flags present. If blocked, close the tab and open a fresh session — don't retry the same request.
 
 ### VNC won't connect
 **Fix:** Check `ss -tlnp | grep 5900`, verify firewall rules
@@ -196,6 +252,18 @@ openclaw browser open "https://www.perplexity.ai/search?q=latest+AI+news"
 - 2GB+ RAM (Chrome + Xvfb)
 - OpenClaw 2026.2.17+
 - Google Chrome (not Chromium Snap)
+
+## Verified Working
+
+| Date | Test | Result | Notes |
+|------|------|--------|-------|
+| 2025-02-20 | Russian text query | ✅ Success | No auth required; 2-3s response time |
+| 2025-02-20 | Cloudflare bypass | ✅ Success | Xvfb + stealth flags working |
+
+**Test Query Used:**
+> Согласно Википедии, однотипные изображения на НЕМ могут символизировать раны Иисуса Христа, которые он получил во время распятия. Назовите ЕГО двумя словами.
+
+**Answer:** стигматы Христа (stigmata of Christ)
 
 ## Author
 
