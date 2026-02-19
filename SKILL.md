@@ -70,15 +70,48 @@ x11vnc -storepasswd openclaw /tmp/vncpass
 
 ## How to Use
 
-After setup, the agent can search Perplexity:
+### Quick Automated Search (No Login Required)
+
+For basic queries without authentication:
 
 ```bash
-# Via skill script
+# 1. Start the stealth browser
 ./scripts/start-stealth-browser.sh
 
-# Search Perplexity
+# 2. Open Perplexity with openclaw profile
+openclaw browser open --profile openclaw https://www.perplexity.ai
+
+# 3. Close any auth modal that appears
+openclaw browser click --ref <close-button>
+
+# 4. Click the search textbox, type query, submit
+openclaw browser click --ref <textbox>
+openclaw browser type --ref <textbox> "your question"
+openclaw browser click --ref <submit-button>
+
+# 5. Wait 2-3 seconds, then capture results
+openclaw browser wait --time 3000
+openclaw browser snapshot
+```
+
+**Important:** Use `--profile openclaw` not `--profile chrome` — the chrome profile requires manual extension attachment.
+
+### URL-Based Search (Faster)
+
+```bash
+openclaw browser open "https://www.perplexity.ai/search?q=your+query+here"
+```
+
+### Authenticated Search (Full PRO Features)
+
+After completing VNC authentication (Step 4 above):
+
+```bash
+./scripts/start-stealth-browser.sh
 openclaw browser open "https://www.perplexity.ai/search?q=your+query"
 ```
+
+Your session persists via cookies in `~/.openclaw/browser-profile/`.
 
 ## File Structure
 
@@ -105,10 +138,20 @@ perplexity-pro-openclaw/
 
 | Issue | Solution |
 |-------|----------|
+| Chrome extension relay error | Use `--profile openclaw` instead of `--profile chrome`. Chrome profile requires manual extension attachment. |
+| Auth modal blocking interaction | Click Close button immediately. Don't automate OAuth flows — they trigger anti-bot measures. |
+| Query doesn't submit | Ensure you: 1) Click textbox to focus, 2) Type query, 3) Click Submit button, 4) Wait 2-3 seconds |
 | Chrome shows "HeadlessChrome" | Ensure Xvfb is running, not `--headless` flag |
-| Cloudflare still blocking | Update Chrome, verify all stealth flags |
+| Cloudflare blocking | Close tab and retry with fresh session. Don't retry same request. |
 | VNC connection refused | Check `ss -tlnp \| grep 5900`, verify firewall |
 | Perplexity asks to login again | Profile directory issue - re-authenticate via VNC once |
+
+## Verified Working
+
+| Date | Test | Result |
+|------|------|--------|
+| 2025-02-20 | Unauthenticated Russian query | ✅ Success |
+| 2025-02-20 | Cloudflare bypass | ✅ Success |
 
 ## Security Considerations
 
