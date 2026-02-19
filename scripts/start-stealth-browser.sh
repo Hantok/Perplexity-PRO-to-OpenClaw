@@ -1,6 +1,7 @@
 #!/bin/bash
 # OpenClaw Anti-Bot Browser Launcher
 # Perplexity PRO Integration - Levels 1-6 Anti-Bot Protection
+# Session Persistence: OAuth sessions survive browser restarts
 
 set -e
 
@@ -16,12 +17,20 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Check if Chrome is already running with our profile
+if curl -s http://127.0.0.1:${CDP_PORT}/json/version > /dev/null 2>&1; then
+    echo -e "${GREEN}✓ Chrome already running with CDP on port ${CDP_PORT}${NC}"
+    echo "User-Agent:"
+    curl -s http://127.0.0.1:${CDP_PORT}/json/version | grep -o '"User-Agent": "[^"]*"' || echo "Unknown"
+    exit 0
+fi
+
 echo -e "${GREEN}Starting OpenClaw Stealth Browser...${NC}"
 
-# Kill existing instances
-echo "Cleaning up existing processes..."
+# Kill only Xvfb (not Chrome) to ensure clean display
+# Note: We intentionally do NOT kill Chrome to preserve sessions
+echo "Cleaning up Xvfb..."
 pkill -f "Xvfb ${XVFB_DISPLAY}" 2>/dev/null || true
-pkill -f "google-chrome.*remote-debugging-port=${CDP_PORT}" 2>/dev/null || true
 sleep 1
 
 # Create persistent profile directory
@@ -56,8 +65,12 @@ fi
 
 echo -e "${GREEN}✓ Xvfb running (PID: ${XVFB_PID})${NC}"
 
-# Start Chrome with anti-bot settings
+# Start Chrome with anti-bot settings + session persistence
 echo "Starting Chrome with stealth settings..."
+# Level 1: Browser Fingerprint Masking
+# Level 2: Session/Cookie Reuse (user-data-dir)
+# Level 3: Xvfb instead of --headless (undetectable)
+# Level 4: Session persistence flags for OAuth
 google-chrome \
     --no-sandbox \
     --disable-setuid-sandbox \
@@ -80,6 +93,9 @@ google-chrome \
     --disable-renderer-backgrounding \
     --disable-background-networking \
     --enable-automation=false \
+    --restore-last-session \
+    --persist-session-cookies \
+    --keep-alive-for-test \
     > "${LOG_FILE}" 2>&1 &
 
 CHROME_PID=$!
@@ -99,6 +115,11 @@ for i in {1..15}; do
         echo ""
         echo -e "${YELLOW}Profile location:${NC} ${PROFILE_DIR}"
         echo -e "${YELLOW}Log file:${NC} ${LOG_FILE}"
+        echo ""
+        echo -e "${GREEN}Session Persistence:${NC}"
+        echo "  • OAuth tokens survive browser restarts"
+        echo "  • Profile stored on disk (survives reboots)"
+        echo "  • Re-authenticate only if you manually logout"
         exit 0
     fi
 done

@@ -111,7 +111,31 @@ After completing VNC authentication (Step 4 above):
 openclaw browser open "https://www.perplexity.ai/search?q=your+query"
 ```
 
-Your session persists via cookies in `~/.openclaw/browser-profile/`.
+Your session persists via cookies and OAuth tokens in `~/.openclaw/browser-profile/`.
+
+### Session Persistence
+
+**Perplexity authentication now persists like a normal browser:**
+
+| Scenario | Persistence | Notes |
+|----------|-------------|-------|
+| Browser restart | ✅ Yes | `--restore-last-session` flag preserves OAuth tokens |
+| Machine reboot | ✅ Yes | Profile is on disk in `~/.openclaw/browser-profile/` |
+| Days/weeks idle | ✅ Yes | OAuth refresh tokens keep session valid |
+
+**Only re-authenticate if:**
+- You manually log out of Perplexity
+- You clear browser data/cookies
+- Google forces security verification (rare)
+- Profile directory is deleted
+
+```bash
+# Check Chrome is running
+curl -s http://127.0.0.1:18800/json/version > /dev/null && echo "✅ Chrome running"
+
+# Restart Chrome (won't kill existing instance)
+./scripts/start-stealth-browser.sh
+```
 
 ## File Structure
 
@@ -131,7 +155,7 @@ perplexity-pro-openclaw/
 3. **Xvfb Virtual Display** - Real Chrome window, not headless
 4. **Realistic Viewport** - 1920x1080 resolution
 5. **Disabled Automation Flags** - Background throttling disabled
-6. **Persistent Cookies** - Survives browser restarts
+6. **Persistent Cookies** - `--persist-session-cookies` + `--restore-last-session`
 7. **FlareSolverr** (optional) - For extreme cases
 
 ## Troubleshooting
@@ -144,7 +168,7 @@ perplexity-pro-openclaw/
 | Chrome shows "HeadlessChrome" | Ensure Xvfb is running, not `--headless` flag |
 | Cloudflare blocking | Close tab and retry with fresh session. Don't retry same request. |
 | VNC connection refused | Check `ss -tlnp \| grep 5900`, verify firewall |
-| Perplexity asks to login again | Profile directory issue - re-authenticate via VNC once |
+| Perplexity asks to login daily | Update `start-stealth-browser.sh` — old version killed Chrome on restart. New version checks for running instance first. |
 
 ## Verified Working
 

@@ -57,35 +57,91 @@ The skill creates `~/.openclaw/workspace/start-stealth-browser.sh`:
 
 ```bash
 #!/bin/bash
-# Kill existing instances
+# OpenClaw Anti-Bot Browser Launcher
+# Levels 1-7: Xvfb + Chrome with stealth settings
+# Session Persistence: OAuth sessions survive browser restarts
+
+# Check if Chrome is already running with our profile
+if curl -s http://127.0.0.1:18800/json/version > /dev/null 2>&1; then
+    echo "✅ Chrome already running with CDP on port 18800"
+    curl -s http://127.0.0.1:18800/json/version | grep -o '"User-Agent": "[^"]*"'
+    exit 0
+fi
+
+echo "Starting new Chrome instance..."
+
+# Kill only Xvfb (not Chrome) to ensure clean display
 pkill -f "Xvfb :99" 2>/dev/null
-pkill -f "google-chrome.*remote-debugging-port=18800" 2>/dev/null
 sleep 1
 
-# Create persistent profile (NOT in /tmp!)
+# Create persistent user data directory (not in /tmp!)
 mkdir -p ~/.openclaw/browser-profile
 
-# Start Xvfb virtual display
+# Start Xvfb (virtual display)
 export DISPLAY=:99
 Xvfb :99 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset &
+XVFB_PID=$!
+echo "Xvfb started on DISPLAY :99 (PID: $XVFB_PID)"
 sleep 2
 
-# Start Chrome with anti-bot flags
-google-chrome \
+# Start Chrome with anti-bot settings + session persistence
+# Level 1: Browser Fingerprint Masking
+# Level 2: Session/Cookie Reuse (user-data-dir)
+# Level 3: Xvfb instead of --headless (undetectable)
+# Level 4: Session persistence flags for OAuth
+DISPLAY=:99 google-chrome \
     --no-sandbox \
     --disable-setuid-sandbox \
     --disable-dev-shm-usage \
     --disable-gpu \
+    --disable-software-rasterizer \
     --remote-debugging-port=18800 \
-    --user-data-dir=~/.openclaw/browser-profile \
+    --user-data-dir="$HOME/.openclaw/browser-profile" \
     --window-size=1920,1080 \
+    --force-color-profile=srgb \
     --disable-blink-features=AutomationControlled \
+    --disable-features=IsolateOrigins,site-per-process,Translate \
     --no-first-run \
+    --no-default-browser-check \
     --password-store=basic \
-    > /tmp/chrome.log 2>&1 &
+    --use-mock-keychain \
+    --enable-features=NetworkService,NetworkServiceInProcess \
+    --disable-background-timer-throttling \
+    --disable-backgrounding-occluded-windows \
+    --disable-renderer-backgrounding \
+    --disable-background-networking \
+    --enable-automation=false \
+    --restore-last-session \
+    --persist-session-cookies \
+    --keep-alive-for-test \
+    > /tmp/chrome_stealth.log 2>&1 &
 
-echo "Chrome started on http://127.0.0.1:18800"
+CHROME_PID=$!
+echo "Chrome started (PID: $CHROME_PID)"
+echo "Profile: ~/.openclaw/browser-profile (persistent)"
+echo "CDP URL: http://127.0.0.1:18800"
+
+# Wait for Chrome to be ready
+for i in {1..10}; do
+    sleep 1
+    if curl -s http://127.0.0.1:18800/json/version > /dev/null 2>&1; then
+        echo "✅ Chrome ready!"
+        curl -s http://127.0.0.1:18800/json/version | grep -o '"User-Agent": "[^"]*"'
+        exit 0
+    fi
+done
+
+echo "❌ Chrome failed to start"
+cat /tmp/chrome_stealth.log | tail -20
+exit 1
 ```
+
+**Key Features:**
+- ✅ Checks if Chrome is already running (preserves sessions)
+- ✅ Won't kill existing Chrome instances
+- ✅ `--restore-last-session` restores previous tabs and auth
+- ✅ `--persist-session-cookies` keeps OAuth tokens valid
+- ✅ Profile stored in `~/.openclaw/browser-profile/` (survives reboots)
 
 ### Step 4: Start VNC Server
 
@@ -123,6 +179,37 @@ Or use Finder → Cmd+K → `vnc://your-server-ip:5900`
 4. **Use your actual Google password** (not App Password)
 5. Complete 2FA if enabled
 6. ✅ Session persists permanently!
+
+## Session Persistence
+
+**Perplexity authentication persists like a normal browser:**
+
+### How It Works
+- **Persistent Profile**: All data stored in `~/.openclaw/browser-profile/` (on disk, not /tmp)
+- **Session Restore**: Chrome restores tabs and OAuth tokens on restart
+- **OAuth Refresh Tokens**: Google authentication valid for months
+- **No Daily Re-auth**: Unlike the old script, sessions survive indefinitely
+
+### Session Survives:
+- ✅ **Browser restart** — OAuth tokens restore automatically
+- ✅ **Machine reboot** — Profile is on disk, persists across reboots
+- ✅ **Days/weeks of inactivity** — Refresh tokens keep session valid
+
+### Only Re-authenticate If:
+- ❌ You manually log out of Perplexity
+- ❌ You clear browser cookies/data
+- ❌ Google forces security verification (rare)
+- ❌ Profile directory `~/.openclaw/browser-profile/` is deleted
+
+### Keeping Chrome Running
+
+```bash
+# Check if Chrome is running
+curl -s http://127.0.0.1:18800/json/version > /dev/null && echo "✅ Chrome running" || echo "❌ Chrome stopped"
+
+# Restart Chrome (preserves session — won't kill existing instance)
+~/.openclaw/workspace/start-stealth-browser.sh
+```
 
 ## Usage
 
@@ -244,7 +331,20 @@ openclaw browser open "https://www.perplexity.ai/search?q=your+query+here"
 **Fix:** Check `ss -tlnp | grep 5900`, verify firewall rules
 
 ### Perplexity asks to log in again
-**Fix:** Re-authenticate via VNC once. Profile persists after that.
+**Cause:** Old script killed Chrome on restart, wiping OAuth tokens
+
+**Fix:** 
+1. Use the updated `start-stealth-browser.sh` (checks for running Chrome)
+2. Re-authenticate once via VNC
+3. Session will now persist across restarts
+
+```bash
+# Verify Chrome is running
+curl -s http://127.0.0.1:18800/json/version > /dev/null && echo "✅ Chrome running"
+
+# If stopped, restart (session will restore)
+~/.openclaw/workspace/start-stealth-browser.sh
+```
 
 ## Requirements
 
