@@ -257,7 +257,7 @@ openclaw browser open "https://www.perplexity.ai/search?q=your+query+here"
 
 | Date | Test | Result | Notes |
 |------|------|--------|-------|
-| 2025-02-20 | Russian text query | ✅ Success | No auth required; 2-3s response time |
+| 2025-02-20 | Text query | ✅ Success | No auth required; 2-3s response time |
 | 2025-02-20 | Cloudflare bypass | ✅ Success | Xvfb + stealth flags working |
 
 **Test Query Used:**
